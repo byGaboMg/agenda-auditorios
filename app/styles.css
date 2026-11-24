@@ -250,3 +250,6 @@ textarea.input { min-height: 96px; resize: vertical; }
   .modal { border-radius: 24px 24px 0 0; max-height: 94vh; }
 }
 @media (prefers-reduced-motion: reduce) { .sidebar { transition: none; } }
+
+.credits { font-size: .85rem; border-top: 1px solid var(--line); padding-top: 14px; margin-top: 6px; overflow-wrap: anywhere; }
+.credits a { color: var(--accent); font-weight: 600; }

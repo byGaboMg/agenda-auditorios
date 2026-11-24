@@ -394,6 +394,8 @@ function viewSettings() {
       <button class="btn" data-a="test-notif" style="flex:0 0 auto">${icon('bell')}Probar notificación</button></div></div>
     <div class="card"><h3>Cambiar contraseña</h3><form id="pass-form" class="row" style="align-items:end"><label class="field"><span>Nueva contraseña</span><input class="input" type="password" id="new-pass" minlength="8" autocomplete="new-password" required></label><button class="btn" type="submit" style="flex:0 0 auto">Guardar</button></form><small class="muted">Mínimo 8 caracteres.</small></div>
     <button class="btn outline" data-a="logout" style="justify-self:start">${icon('logout')}Cerrar sesión</button>
+    <p class="muted credits">Desarrollado por Luis Gabriel Manzano Guadarrama.<br>
+      Para soporte y contacto de cotizaciones: <a href="https://mail.google.com/mail/?view=cm&amp;fs=1&amp;to=manzano.guadarrama.luisgabriel%40gmail.com" target="_blank" rel="noopener">manzano.guadarrama.luisgabriel@gmail.com</a></p>
   </div>`;
 }
 
