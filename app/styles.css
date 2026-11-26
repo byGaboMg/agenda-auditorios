@@ -253,3 +253,31 @@ textarea.input { min-height: 96px; resize: vertical; }
 
 .credits { font-size: .85rem; border-top: 1px solid var(--line); padding-top: 14px; margin-top: 6px; overflow-wrap: anywhere; }
 .credits a { color: var(--accent); font-weight: 600; }
+
+/* Enlaces dentro de notas */
+.notes-box a, .note p a, .loan p a { color: var(--accent); text-decoration: underline; overflow-wrap: anywhere; }
+
+/* Días del scouting y "por confirmar" */
+.pill.pend { background: var(--surface-3); color: var(--muted); border: 1px dashed var(--muted); }
+.ev.pending { border-style: dashed; background: var(--surface-2); }
+.ev.pending .bar { background: repeating-linear-gradient(180deg, var(--c) 0 6px, transparent 6px 12px); }
+.ev.pending .title { color: var(--muted); }
+.grid .blk.pending { opacity: .65; background: transparent; outline: 1.5px dashed var(--c); outline-offset: -2px; }
+.day-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.day-edit { padding: 12px 14px; display: grid; gap: 10px; }
+
+/* Centro de notificaciones */
+.notif-list { display: grid; gap: 8px; max-width: 760px; }
+.notif { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: start; text-align: left; width: 100%;
+  border: 1px solid var(--line); background: var(--surface); border-radius: 16px; padding: 12px 14px; cursor: pointer; }
+.notif:hover { box-shadow: var(--shadow); }
+.notif.unread { background: var(--accent-soft); border-color: transparent; }
+.notif-icon { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); color: var(--accent); }
+.notif.unread .notif-icon { background: var(--surface); }
+.notif.k-evento_cancelado .notif-icon, .notif.k-evento_eliminado .notif-icon { color: var(--danger); }
+.notif-body { display: grid; gap: 2px; min-width: 0; }
+.notif-body b { font-weight: 500; }
+.notif.unread .notif-body b { font-weight: 700; }
+.notif-body span { color: var(--muted); overflow-wrap: anywhere; }
+.notif-body small { color: var(--muted); font-size: .78rem; }
+.notif .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); margin-top: 6px; }

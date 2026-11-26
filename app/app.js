@@ -7,6 +7,7 @@ const sb = SUPABASE_URL ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
 // ---------------------------------------------------------------- utilidades
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const linkify = (t) => esc(t).replace(/https?:\/\/[^\s<]+[^\s<.,;:!?)\]»"']/g, (u) => `<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`);
 const loginName = (n) => (n || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 const pad = (n) => String(n).padStart(2, '0');
 const dateKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -66,7 +67,7 @@ const AVATAR = ['#9C1C45', '#3D5A98', '#2E7D6B', '#7A5900', '#6A4C93', '#00838F'
 // ---------------------------------------------------------------- estado
 const S = {
   session: null, me: null, settings: null,
-  venues: [], equip: [], events: [], loans: [], notes: [], profiles: new Map(), history: {},
+  venues: [], equip: [], events: [], loans: [], notes: [], profiles: new Map(), history: {}, notifs: [], days: [],
   route: 'calendario', weekStart: mondayOf(new Date()), selDay: dateKey(new Date()),
   gridMode: false, venueFilter: null, scoutTab: 0, loanTab: 0, navOpen: false,
   modal: null, loginError: '',
@@ -130,7 +131,7 @@ function notify(e, test) {
 async function loadAll() {
   const uid = S.session.user.id;
   const since = addDays(new Date(), -180).toISOString();
-  const [v, eq, ev, lo, no, pr, st] = await Promise.all([
+  const [v, eq, ev, lo, no, pr, st, nf, dy] = await Promise.all([
     sb.from('venues').select('*').eq('is_active', true).order('sort_order'),
     sb.from('equipment').select('id,name,category,total_quantity,notes').eq('is_active', true).order('name'),
     sb.from('events').select('*, event_requirements(equipment_id,quantity)').is('deleted_at', null).gt('ends_at', since).order('starts_at'),
@@ -138,9 +139,12 @@ async function loadAll() {
     sb.from('notes').select('*').order('is_pinned', { ascending: false }).order('created_at', { ascending: false }),
     sb.from('profiles').select('id,full_name,area,shift,job_title,role,is_active'),
     sb.from('user_settings').select('*').eq('user_id', uid).maybeSingle(),
+    sb.from('notifications').select('*').order('created_at', { ascending: false }).limit(300),
+    sb.from('scouting_days').select('*').order('starts_at'),
   ]);
-  const err = [v, eq, ev, lo, no, pr, st].find((r) => r.error);
+  const err = [v, eq, ev, lo, no, pr, st, nf, dy].find((r) => r.error);
   if (err) { console.error(err.error); toast(`Error al cargar: ${err.error.message}`); }
+  S.notifs = nf.data || []; S.days = dy.data || [];
   S.venues = v.data || []; S.events = ev.data || []; S.loans = lo.data || []; S.notes = no.data || [];
   S.profiles = new Map((pr.data || []).map((p) => [p.id, p]));
   S.me = S.profiles.get(uid) || null; S.settings = st.data || { theme: 'sistema', notifications_enabled: true, notify_minutes_before: 30 };
@@ -204,7 +208,7 @@ function renderLogin() {
 
 // ---------------------------------------------------------------- estructura
 const NAV = [
-  ['calendario', 'Calendario', 'cal'], ['scouting', 'Scouting', 'scout'], ['prestamos', 'Material prestado', 'outbox'],
+  ['calendario', 'Calendario', 'cal'], ['notificaciones', 'Notificaciones', 'bell'], ['scouting', 'Scouting', 'scout'], ['prestamos', 'Material prestado', 'outbox'],
   ['catalogo', 'Catálogo de material', 'box'], ['notas', 'Notas', 'note'],
 ];
 function render() {
@@ -212,7 +216,8 @@ function render() {
   const now = new Date();
   const upcomingScouts = S.events.filter((e) => e.kind === 'scouting' && new Date(e.ends_at) > now).length;
   const overdue = S.loans.filter((l) => !l.returned_at && l.due_at && new Date(l.due_at) < now).length;
-  const views = { calendario: viewCalendar, scouting: viewScouting, prestamos: viewLoans, catalogo: viewCatalog, notas: viewNotes, ajustes: viewSettings };
+  const unread = S.notifs.filter((n) => !n.read_at).length;
+  const views = { calendario: viewCalendar, notificaciones: viewNotifs, scouting: viewScouting, prestamos: viewLoans, catalogo: viewCatalog, notas: viewNotes, ajustes: viewSettings };
   const view = views[S.route] || viewCalendar;
   const modalScroll = document.querySelector('.modal')?.scrollTop || 0;
   $app.innerHTML = `
@@ -221,7 +226,7 @@ function render() {
       <div class="brand">${logos(52)}</div>
       <div class="me">${avatar(S.me.id, 38)}<div><b>${esc(S.me.full_name)}</b><br><small class="muted">${esc(roleLabel(S.me))}</small></div></div>
       ${NAV.map(([r, label, ic]) => `<a class="nav-item ${S.route === r ? 'active' : ''}" href="#${r}">${icon(ic)}${label}${
-        r === 'scouting' && upcomingScouts ? `<span class="badge soft">${upcomingScouts}</span>` : r === 'prestamos' && overdue ? `<span class="badge">${overdue}</span>` : ''}</a>`).join('')}
+        r === 'notificaciones' && unread ? `<span class="badge">${unread > 99 ? '99+' : unread}</span>` : r === 'scouting' && upcomingScouts ? `<span class="badge soft">${upcomingScouts}</span>` : r === 'prestamos' && overdue ? `<span class="badge">${overdue}</span>` : ''}</a>`).join('')}
       <div class="spacer"></div>
       <a class="nav-item ${S.route === 'ajustes' ? 'active' : ''}" href="#ajustes">${icon('settings')}Ajustes</a>
       <a class="nav-item" href="#" data-a="logout">${icon('logout')}Cerrar sesión</a>
@@ -237,16 +242,16 @@ const topbar = (title, extra = '') => `<div class="topbar"><button class="icon-b
 // ---------------------------------------------------------------- calendario
 function evCard(e, { showDate } = {}) {
   const now = new Date(); const c = venueColor(e.venue_id);
-  const past = new Date(e.ends_at) < now; const cancelled = e.status === 'cancelado'; const live = isOngoing(e, now);
+  const past = new Date(e.ends_at) < now; const cancelled = e.status === 'cancelado'; const live = !e.pending && isOngoing(e, now);
   const reqs = e.event_requirements || []; const pieces = reqs.reduce((a, r) => a + r.quantity, 0);
   let progress = '';
   if (live) { const tot = new Date(e.ends_at) - new Date(e.starts_at); const done = now - new Date(e.starts_at);
     progress = `<div class="progress"><div style="width:${Math.min(100, (done / tot) * 100)}%"></div></div><small style="color:var(--accent)">Termina en ${fmtMins(Math.round((new Date(e.ends_at) - now) / 60000))}</small>`; }
-  return `<button class="ev ${past ? 'past' : ''} ${cancelled ? 'cancelled' : ''}" style="--c:${c}" data-a="open-event" data-id="${e.id}">
+  return `<button class="ev ${past ? 'past' : ''} ${cancelled ? 'cancelled' : ''} ${e.pending ? 'pending' : ''}" style="--c:${c}" data-a="open-event" data-id="${e.scout_id || e.id}">
     <span class="bar"></span>
     <span class="time"><b>${fmtTime(e.starts_at)}</b><small>${fmtTime(e.ends_at)}</small></span>
     <span class="body">
-      <span class="tags-row">${e.kind === 'scouting' ? '<span class="pill scout">Scouting</span>' : ''}${live ? '<span class="pill live">En curso</span>' : ''}${cancelled ? '<span class="pill cancel">Cancelado</span>' : ''}</span>
+      <span class="tags-row">${e.pending ? '<span class="pill pend">Por confirmar · del scouting</span>' : ''}${e.kind === 'scouting' ? '<span class="pill scout">Scouting</span>' : ''}${live ? '<span class="pill live">En curso</span>' : ''}${cancelled ? '<span class="pill cancel">Cancelado</span>' : ''}</span>
       ${showDate ? `<small style="color:var(--accent);font-weight:600">${fmtShort(e.starts_at)}</small>` : ''}
       <span class="title">${esc(e.title)}</span>
       <span class="meta"><span style="color:color-mix(in srgb, ${c} 65%, var(--ink))">${icon('place')}${esc(venueLabel(e, true))}</span>${e.responsible ? `<span>${icon('person')}${esc(e.responsible)}</span>` : ''}${reqs.length ? `<span>${icon('box')}${reqs.length} requerimientos · ${pieces} piezas</span>` : ''}</span>
@@ -254,9 +259,18 @@ function evCard(e, { showDate } = {}) {
     </span>
   </button>`;
 }
+function pendingDays() {
+  return S.days.filter((d) => !d.event_id).map((d) => {
+    const sc = S.events.find((e) => e.id === d.scouting_id); if (!sc) return null;
+    return { id: `dia-${d.id}`, pending: true, scout_id: sc.id, kind: 'pendiente', title: sc.title.replace(/^Scouting · /, ''), responsible: sc.responsible,
+      starts_at: d.starts_at, ends_at: d.ends_at, venue_id: d.venue_id ?? sc.venue_id, venue_other: d.venue_id ? d.venue_other : sc.venue_other,
+      status: 'pendiente', event_requirements: sc.event_requirements };
+  }).filter(Boolean);
+}
 function weekEvents() {
   const a = S.weekStart; const b = addDays(a, 7);
-  return S.events.filter((e) => new Date(e.starts_at) < b && new Date(e.ends_at) > a && (S.venueFilter == null || e.venue_id === S.venueFilter));
+  return [...S.events, ...pendingDays()].filter((e) => new Date(e.starts_at) < b && new Date(e.ends_at) > a && (S.venueFilter == null || e.venue_id === S.venueFilter))
+    .sort((x, y) => new Date(x.starts_at) - new Date(y.starts_at));
 }
 function viewCalendar() {
   const days = [...Array(7)].map((_, i) => addDays(S.weekStart, i));
@@ -280,7 +294,7 @@ function viewCalendar() {
 }
 function weekList(days, evs) {
   const now = new Date(); const today = dateKey(now);
-  const live = evs.filter((e) => isOngoing(e, now));
+  const live = evs.filter((e) => !e.pending && isOngoing(e, now));
   let html = '';
   if (live.length) html += `<p class="section-label">En curso ahora</p><div class="list">${live.map((e) => evCard(e)).join('')}</div>`;
   for (const d of days) {
@@ -309,7 +323,7 @@ function weekGrid(days, evs) {
       const sm = Math.max(0, (s.getHours() - H0) * 60 + s.getMinutes());
       const em = dateKey(en) !== k ? (H1 - H0) * 60 : Math.min((H1 - H0) * 60, (en.getHours() - H0) * 60 + en.getMinutes());
       const [ln, n] = pos.get(e.id); const c = venueColor(e.venue_id);
-      return `<button class="blk ${e.status === 'cancelado' ? 'cancelled' : ''}" data-a="open-event" data-id="${e.id}" title="${esc(e.title)}"
+      return `<button class="blk ${e.status === 'cancelado' ? 'cancelled' : ''} ${e.pending ? 'pending' : ''}" data-a="open-event" data-id="${e.scout_id || e.id}" title="${esc(e.pending ? 'Por confirmar: ' : '')}${esc(e.title)}"
         style="--c:${c};--cbg:color-mix(in srgb, ${c} 18%, var(--surface));top:${(sm / 60) * HH}px;height:${Math.max(24, ((em - sm) / 60) * HH - 2)}px;left:calc(${(ln / n) * 100}% + 2px);width:calc(${100 / n}% - 4px)">${esc(e.title)}</button>`;
     }).join('');
     const nowLine = k === today && now.getHours() >= H0 && now.getHours() < H1 ? `<div class="now" style="top:${((now.getHours() - H0) * 60 + now.getMinutes()) / 60 * HH}px"></div>` : '';
@@ -319,15 +333,31 @@ function weekGrid(days, evs) {
   return `<div class="grid-wrap"><div class="grid" style="border-bottom:1px solid var(--line)">${head}</div><div class="grid"><div class="hours" style="height:${(H1 - H0) * HH}px">${hours}</div>${cols}</div></div>`;
 }
 
+// ---------------------------------------------------------------- notificaciones
+const NOTIF_ICON = { nota: 'note', evento_nuevo: 'plus', evento_cambio: 'edit', evento_cancelado: 'close', evento_eliminado: 'trash', recordatorio: 'bell' };
+function viewNotifs() {
+  const unread = S.notifs.filter((n) => !n.read_at).length;
+  return `${topbar('Notificaciones', unread ? `<button class="btn outline small" data-a="read-all">${icon('check')}Marcar todas como leídas</button>` : '')}
+    <p class="muted" style="margin-bottom:14px">${unread ? (unread === 1 ? '1 sin leer.' : `${unread} sin leer.`) : 'Estás al día.'} Se guardan 60 días.</p>
+    <div class="notif-list">${S.notifs.length ? S.notifs.map((n) => `<button class="notif ${n.read_at ? '' : 'unread'} k-${n.kind}" data-a="open-notif" data-id="${n.id}">
+      <span class="notif-icon">${icon(NOTIF_ICON[n.kind] || 'bell')}</span>
+      <span class="notif-body"><b>${esc(n.title)}</b><span>${esc(n.body)}</span><small>${relative(n.created_at)}</small></span>
+      ${n.read_at ? '' : '<span class="dot" aria-label="Sin leer"></span>'}</button>`).join('') : '<p class="empty-day">Todavía no hay notificaciones.</p>'}</div>`;
+}
+
 // ---------------------------------------------------------------- scouting
 function viewScouting() {
   const now = new Date(); const all = S.events.filter((e) => e.kind === 'scouting');
-  const list = S.scoutTab === 0 ? all.filter((e) => new Date(e.ends_at) > now) : all.filter((e) => new Date(e.ends_at) <= now).reverse();
+  const list = S.scoutTab === 0 ? all.filter((e) => new Date(e.ends_at) > now || S.days.some((d) => d.scouting_id === e.id && !d.event_id))
+    : all.filter((e) => new Date(e.ends_at) <= now && !S.days.some((d) => d.scouting_id === e.id && !d.event_id)).reverse();
   return `${topbar('Scouting')}
     <div class="tabs"><button class="${S.scoutTab === 0 ? 'on' : ''}" data-a="scout-tab" data-t="0">Próximos</button><button class="${S.scoutTab === 1 ? 'on' : ''}" data-a="scout-tab" data-t="1">Realizados</button></div>
     <p class="info-box" style="margin-bottom:14px">Un scouting es la cita para revisar qué necesitará un evento. Lo acordado ahí se registra después como evento con sus requerimientos.</p>
     <div class="list">${list.length ? list.map((s) => { const d = S.events.filter((e) => e.scouting_id === s.id);
-      return `<div>${evCard(s, { showDate: true })}<div class="row" style="align-items:center;padding:6px 6px 0;gap:8px">${d.length
+      const pend = S.days.filter((x) => x.scouting_id === s.id && !x.event_id).length;
+      return `<div>${evCard(s, { showDate: true })}<div class="row" style="align-items:center;padding:6px 6px 0;gap:8px">${pend
+        ? `<span class="muted" style="flex:1">${pend === 1 ? '1 día por confirmar' : `${pend} días por confirmar`}${d.length ? ` · ${d.length} registrado${d.length === 1 ? '' : 's'}` : ''}</span><button class="btn small primary" data-a="register-days" data-id="${s.id}" style="flex:0 0 auto">${icon('check')}Registrar ${pend === 1 ? 'evento' : `${pend} eventos`}</button>`
+        : d.length
         ? `<span style="color:var(--accent);font-weight:600;flex:1">${icon('check')} ${d.length === 1 ? 'Evento registrado' : `${d.length} eventos registrados`}</span>${d.map((x) => `<button class="btn outline small" data-a="open-event" data-id="${x.id}" style="flex:0 0 auto">Ver ${esc(fmtShort(x.starts_at))}</button>`).join('')}`
         : `<span class="muted" style="flex:1">Pendiente de registrar evento</span><button class="btn small" data-a="from-scout" data-id="${s.id}" style="flex:0 0 auto">${icon('plus')}Registrar evento</button>`}</div></div>`; }).join('')
       : `<p class="empty-day">${S.scoutTab === 0 ? 'No hay scoutings programados.' : 'Aún no hay scoutings realizados.'}</p>`}</div>
@@ -347,7 +377,7 @@ function viewLoans() {
       const pill = l.returned_at ? '<span class="pill ok">Devuelto</span>' : late ? '<span class="pill cancel">Vencido</span>' : '<span class="pill scout">Prestado</span>';
       return `<div class="card loan"><div class="loan-head"><div><h3>${esc(l.borrower_name)}</h3><small class="muted">${esc([l.borrower_area, l.borrower_contact].filter(Boolean).join(' · '))}</small></div>${pill}</div>
         <div class="req-chips">${l.loan_items.map((i) => `<span>${esc(equipById(i.equipment_id)?.name || 'Material')} ×${i.quantity}</span>`).join('')}</div>
-        ${l.notes ? `<p class="muted" style="white-space:pre-wrap">${esc(l.notes)}</p>` : ''}
+        ${l.notes ? `<p class="muted" style="white-space:pre-wrap">${linkify(l.notes)}</p>` : ''}
         <small class="muted">Salió: ${fmtDateTime(l.loaned_at)}${l.due_at ? ` · Devolver: ${fmtDateTime(l.due_at)}` : ''}${l.returned_at ? ` · Regresó: ${fmtDateTime(l.returned_at)}${l.received_by ? ` (recibió ${esc(personName(l.received_by))})` : ''}` : ''}<br>Registró: ${esc(personName(l.created_by))}</small>
         ${l.returned_at ? '' : `<div><button class="btn small" data-a="return-loan" data-id="${l.id}">${icon('check')}Marcar devuelto</button></div>`}</div>`; }).join('')
       : `<p class="empty-day">${S.loanTab === 0 ? 'No hay material prestado.' : 'Sin devoluciones.'}</p>`}</div>
@@ -375,7 +405,7 @@ function viewNotes() {
       return `<div class="card note ${n.is_pinned ? 'pinned' : ''}"><div class="note-head">${avatar(n.author_id)}<div><b>${esc(personName(n.author_id))}${mine ? ' (tú)' : ''}</b><br><small class="muted">${relative(n.created_at)}</small></div>
         ${canEdit ? `<button class="icon-btn" data-a="pin-note" data-id="${n.id}" aria-label="${n.is_pinned ? 'Desfijar' : 'Fijar arriba'}" title="${n.is_pinned ? 'Desfijar' : 'Fijar arriba'}" style="${n.is_pinned ? 'color:var(--accent)' : ''}">${icon('pin')}</button>
         <button class="icon-btn" data-a="del-note" data-id="${n.id}" aria-label="Eliminar nota" title="Eliminar">${icon('trash')}</button>` : n.is_pinned ? `<span style="color:var(--accent)">${icon('pin')}</span>` : ''}</div>
-        ${n.title ? `<h3>${esc(n.title)}</h3>` : ''}<p>${esc(n.content)}</p></div>`; }).join('') : '<p class="empty-day">Todavía no hay notas.</p>'}</div>
+        ${n.title ? `<h3>${esc(n.title)}</h3>` : ''}<p>${linkify(n.content)}</p></div>`; }).join('') : '<p class="empty-day">Todavía no hay notas.</p>'}</div>
     <button class="btn primary fab" data-a="new-note">${icon('edit')}Nueva nota</button>`;
 }
 
@@ -444,19 +474,33 @@ function modalEvent(m) {
     <div class="actions"><button class="btn" data-a="edit-event" data-id="${e.id}">${icon('edit')}Editar</button>
       <button class="btn outline" data-a="toggle-cancel" data-id="${e.id}">${cancelled ? 'Reactivar' : 'Marcar como cancelado'}</button>
       <button class="btn danger" data-a="del-event" data-id="${e.id}">${icon('trash')}Eliminar</button></div>
+    ${sc ? scoutDaysBlock(e) : ''}
     ${sc ? `<div><p class="section-label">Resultado del scouting</p>${derived.length ? derived.map((d) => `<button class="btn outline" data-a="open-event" data-id="${d.id}">${esc(d.title)} · ${fmtShort(d.starts_at)}</button>`).join(' ') : `<p class="muted" style="margin-bottom:8px">Aún no se registra el evento que salió de este scouting.</p><button class="btn primary" data-a="from-scout" data-id="${e.id}">${icon('plus')}Registrar evento a partir de este scouting</button>`}</div>` : ''}
     ${origin ? `<div><p class="section-label">Origen</p><button class="btn outline" data-a="open-event" data-id="${origin.id}">Viene del scouting: ${esc(origin.title)}</button></div>` : ''}
     <div><p class="section-label">${sc ? 'Requerimientos solicitados' : 'Requerimientos'}</p>${reqs.length ? `<div class="req-chips">${reqs.map((r) => `<span>${esc(equipById(r.equipment_id)?.name || 'Material')} <b>×${r.quantity}</b></span>`).join('')}</div>` : '<p class="muted">Sin requerimientos registrados.</p>'}</div>
-    <div><p class="section-label">Notas generales</p><div class="notes-box">${esc(e.general_notes || 'Sin notas.')}</div></div>
+    <div><p class="section-label">Notas generales</p><div class="notes-box">${linkify(e.general_notes || 'Sin notas.')}</div></div>
     <div><p class="section-label">Historial</p><div class="timeline">${hist ? hist.map(describeHistory).join('') || '<p class="muted">Sin movimientos.</p>' : '<p class="muted">Cargando…</p>'}</div></div>`];
 }
+function scoutDaysBlock(e) {
+  const days = S.days.filter((d) => d.scouting_id === e.id);
+  if (!days.length) return '';
+  const pend = days.filter((d) => !d.event_id).length;
+  return `<div><p class="section-label">Días del evento</p><div class="list">${days.map((d) => {
+    const ev = d.event_id && S.events.find((x) => x.id === d.event_id);
+    const place = d.venue_id ? (venueById(d.venue_id)?.requires_detail ? d.venue_other : venueById(d.venue_id)?.name) : venueLabel(e);
+    return `<div class="day-row"><div><b>${fmtDay(d.starts_at)}</b><br><small class="muted">${fmtTime(d.starts_at)} – ${fmtTime(d.ends_at)} · ${esc(place || '')}</small></div>${
+      ev ? `<button class="btn outline small" data-a="open-event" data-id="${ev.id}">${icon('check')}Registrado</button>` : '<span class="pill pend">Por confirmar</span>'}</div>`; }).join('')}</div>
+    ${pend ? `<div class="actions" style="margin-top:10px"><button class="btn primary" data-a="register-days" data-id="${e.id}">${icon('check')}Registrar ${pend === 1 ? 'el evento' : `los ${pend} eventos`}</button></div>` : ''}</div>`;
+}
 function blankDraft(kind = 'evento', date = S.selDay) {
-  return { id: null, kind, title: '', responsible: '', date, start: '10:00', end: '12:00', venue_id: null, venue_other: '', status: 'confirmado', general_notes: '', scouting_id: null, q: {} };
+  return { id: null, kind, title: '', responsible: '', date, start: '10:00', end: '12:00', venue_id: null, venue_other: '', status: 'confirmado', general_notes: '', scouting_id: null, q: {}, days: [] };
 }
 function draftFrom(e) {
   const s = new Date(e.starts_at), en = new Date(e.ends_at);
   return { id: e.id, kind: e.kind, title: e.title, responsible: e.responsible || '', date: dateKey(s), start: timeKey(s), end: timeKey(en), venue_id: e.venue_id, venue_other: e.venue_other || '',
-    status: e.status, general_notes: e.general_notes || '', scouting_id: e.scouting_id, q: Object.fromEntries((e.event_requirements || []).map((r) => [r.equipment_id, r.quantity])) };
+    status: e.status, general_notes: e.general_notes || '', scouting_id: e.scouting_id, q: Object.fromEntries((e.event_requirements || []).map((r) => [r.equipment_id, r.quantity])),
+    days: e.kind === 'scouting' ? S.days.filter((x) => x.scouting_id === e.id).map((x) => ({ id: x.id, event_id: x.event_id, date: dateKey(new Date(x.starts_at)),
+      start: timeKey(new Date(x.starts_at)), end: timeKey(new Date(x.ends_at)), venue_id: x.venue_id, venue_other: x.venue_other || '' })) : [] };
 }
 const draftTimes = (d) => { const s = new Date(`${d.date}T${d.start}`); const e = new Date(`${d.date}T${d.end}`); return [s, e]; };
 async function refreshFormChecks() {
@@ -493,9 +537,29 @@ function modalForm(m) {
     ${other ? `<label class="field"><span>¿Dónde será?</span><input class="input" data-f="venue_other" value="${esc(d.venue_other)}" placeholder="Ej. Plaza Lázaro Cárdenas, museo…" ${t && !d.venue_other.trim() ? 'style="border-color:var(--danger)"' : ''}></label>` : ''}
     ${m.conflicts?.length ? `<div class="warn-box"><b>Se empalma en este lugar con:</b><br>${m.conflicts.map((c) => `• ${esc(c.title)} (${fmtTime(c.starts_at)}–${fmtTime(c.ends_at)})`).join('<br>')}</div>` : ''}
     ${d.id ? `<label class="switch card" style="padding:12px 16px"><span><b>Cancelado</b><br><small class="muted">Sigue en el calendario, tachado, y ya no cuenta para empalmes ni material.</small></span><input type="checkbox" data-f="status" ${d.status === 'cancelado' ? 'checked' : ''}></label>` : ''}
+    ${d.kind === 'scouting' ? daysEditor(d, t) : ''}
     <div><p class="section-label">Requerimientos</p><div class="req-table">${reqRows}</div></div>
     <label class="field"><span>Notas generales</span><textarea class="input" data-f="general_notes" placeholder="Montaje, accesos, contactos, pendientes…">${esc(d.general_notes)}</textarea></label>
     <div class="actions"><button class="btn primary" data-a="save-event" ${m.saving ? 'disabled' : ''}>${m.saving ? 'Guardando…' : 'Guardar'}</button><button class="btn outline" data-a="close">Cancelar</button></div>`];
+}
+function dayInvalid(x) {
+  const v = venueById(x.venue_id);
+  return !x.date || !(new Date(`${x.date}T${x.end}`) > new Date(`${x.date}T${x.start}`)) || !x.venue_id || (v?.requires_detail && !x.venue_other?.trim());
+}
+function daysEditor(d, tried) {
+  return `<div><p class="section-label">Días del evento</p><p class="muted" style="margin-bottom:8px">Fechas en que será el evento. Aparecen en el calendario como “por confirmar” hasta registrarlas.</p>
+    <div class="list">${d.days.map((x, i) => {
+      if (x.event_id) return `<div class="day-row"><div><b>${fmtDay(`${x.date}T${x.start}`)}</b><br><small class="muted">${x.start} – ${x.end} · ya registrado como evento</small></div><span class="pill ok">Registrado</span></div>`;
+      const bad = tried && dayInvalid(x); const v = venueById(x.venue_id);
+      return `<div class="card day-edit" ${bad ? 'style="border-color:var(--danger)"' : ''}>
+        <div class="row"><label class="field"><span>Fecha</span><input class="input" type="date" data-day-f="date" data-i="${i}" value="${x.date}"></label>
+          <label class="field"><span>Hora del evento</span><input class="input" type="time" data-day-f="start" data-i="${i}" value="${x.start}"></label>
+          <label class="field"><span>Desmontaje / término</span><input class="input" type="time" data-day-f="end" data-i="${i}" value="${x.end}"></label></div>
+        <div class="row" style="align-items:end"><label class="field"><span>Lugar</span><select class="input" data-day-f="venue_id" data-i="${i}"><option value="">Selecciona el lugar</option>${S.venues.map((o) => `<option value="${o.id}" ${o.id === x.venue_id ? 'selected' : ''}>${esc(o.name)}</option>`).join('')}</select></label>
+          ${v?.requires_detail ? `<label class="field"><span>¿Dónde será?</span><input class="input" data-day-f="venue_other" data-i="${i}" value="${esc(x.venue_other || '')}"></label>` : ''}
+          <button type="button" class="btn danger small" data-a="del-day" data-i="${i}" style="flex:0 0 auto">${icon('trash')}Quitar</button></div></div>`;
+    }).join('')}</div>
+    <button type="button" class="btn outline" data-a="add-day" style="margin-top:10px">${icon('plus')}Agregar día del evento</button></div>`;
 }
 function modalLoan(m) {
   const d = m.draft; const t = m.tried;
@@ -557,11 +621,18 @@ const A = {
   'save-event': async () => {
     const m = S.modal; const d = m.draft; m.tried = true; const [s, e] = draftTimes(d); const v = venueById(d.venue_id);
     if (!d.title.trim() || !(e > s) || (d.kind === 'evento' && !d.venue_id) || (v?.requires_detail && !d.venue_other.trim())) { render(); toast('Revisa los campos marcados.'); return; }
+    if (d.kind === 'scouting' && d.days.some((x) => !x.event_id && dayInvalid(x))) { render(); toast('Revisa los días del evento: fecha, horario y lugar.'); return; }
     m.saving = true; render();
     const p_event = { id: d.id, kind: d.kind, title: d.title.trim(), responsible: d.responsible.trim(), starts_at: s.toISOString(), ends_at: e.toISOString(),
       venue_id: d.venue_id, venue_other: v?.requires_detail ? d.venue_other.trim() : null, status: d.status, general_notes: d.general_notes.trim(), scouting_id: d.scouting_id };
     const p_requirements = Object.entries(d.q).filter(([, n]) => n > 0).map(([id, n]) => ({ equipment_id: +id, quantity: n }));
     try { const id = await run(sb.rpc('save_event', { p_event, p_requirements }), d.id ? 'Cambios guardados' : 'Guardado. Quedó en el historial.');
+      if (d.kind === 'scouting') {
+        const p_days = d.days.filter((x) => !x.event_id).map((x) => { const vv = venueById(x.venue_id);
+          return { id: x.id || null, starts_at: new Date(`${x.date}T${x.start}`).toISOString(), ends_at: new Date(`${x.date}T${x.end}`).toISOString(),
+            venue_id: x.venue_id, venue_other: vv?.requires_detail ? x.venue_other.trim() : null }; });
+        await run(sb.rpc('save_scouting_days', { p_scouting: id, p_days }));
+      }
       await loadAll(); delete S.history[id]; openEvent(id); }
     catch (err) { m.saving = false; render(); }
   },
@@ -572,6 +643,20 @@ const A = {
       run: async () => { await run(sb.from('events').update({ deleted_at: new Date().toISOString() }).eq('id', e.id)); S.modal = null; await loadAll(); render();
         toast('Evento eliminado', { label: 'Deshacer', run: async () => { await run(sb.from('events').update({ deleted_at: null }).eq('id', e.id), 'Evento restaurado'); await loadAll(); render(); } }); } }; render(); },
   'confirm-yes': () => S.modal.run(),
+  'add-day': () => { const d = S.modal.draft; const last = d.days.filter((x) => !x.event_id).slice(-1)[0];
+    const base = last ? dateKey(addDays(new Date(`${last.date}T12:00`), 1)) : dateKey(addDays(new Date(`${d.date}T12:00`), 7));
+    d.days.push({ id: null, event_id: null, date: base, start: last?.start || d.start, end: last?.end || d.end, venue_id: last?.venue_id ?? d.venue_id, venue_other: last?.venue_other || d.venue_other || '' }); render(); },
+  'del-day': (el) => { S.modal.draft.days.splice(+el.dataset.i, 1); render(); },
+  'register-days': async (el) => { const id = el.dataset.id;
+    const n = await run(sb.rpc('register_scouting_days', { p_scouting: id }));
+    toast(n === 1 ? 'Se registró 1 evento' : `Se registraron ${n} eventos`); await loadAll(); delete S.history[id];
+    if (S.modal) openEvent(id); else render(); },
+  'open-notif': async (el) => { const n = S.notifs.find((x) => String(x.id) === el.dataset.id); if (!n) return;
+    if (!n.read_at) { n.read_at = new Date().toISOString(); render(); sb.from('notifications').update({ read_at: n.read_at }).eq('id', n.id).then(() => {}); }
+    if (n.kind === 'nota') { location.hash = 'notas'; return; }
+    if (n.event_id) { if (S.events.some((e) => e.id === n.event_id)) { location.hash = 'calendario'; openEvent(n.event_id); } else toast('Ese evento ya no está en la agenda.'); } },
+  'read-all': async () => { const at = new Date().toISOString(); S.notifs.forEach((n) => { if (!n.read_at) n.read_at = at; }); render();
+    await run(sb.from('notifications').update({ read_at: at }).is('read_at', null), 'Todas marcadas como leídas'); },
   'new-loan': () => { const due = addDays(new Date(), 2); S.modal = { type: 'loan', draft: { borrower_name: '', borrower_area: '', borrower_contact: '', due_date: dateKey(due), due_time: '18:00', notes: '', q: {} } }; render(); },
   'save-loan': async () => { const m = S.modal; const d = m.draft; m.tried = true; const items = Object.entries(d.q).filter(([, n]) => n > 0);
     if (!d.borrower_name.trim() || !d.borrower_area.trim() || !items.length) { render(); toast('Revisa los campos marcados.'); return; }
@@ -614,6 +699,8 @@ document.addEventListener('keydown', (ev) => {
   if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches('[role="button"][data-a]')) { ev.preventDefault(); ev.target.click(); }
 });
 document.addEventListener('input', (ev) => {
+  const df = ev.target.dataset?.dayF;
+  if (df && S.modal?.draft?.days) { const x = S.modal.draft.days[+ev.target.dataset.i]; x[df] = df === 'venue_id' ? (ev.target.value ? +ev.target.value : null) : ev.target.value; return; }
   const f = ev.target.dataset?.f; if (!f || !S.modal?.draft) return;
   const d = S.modal.draft;
   if (f === 'venue_id') d.venue_id = ev.target.value ? +ev.target.value : null;
@@ -623,6 +710,7 @@ document.addEventListener('input', (ev) => {
 document.addEventListener('change', async (ev) => {
   const t = ev.target;
   if (t.dataset?.check != null && S.modal?.type === 'form') { render(); refreshFormChecks(); }
+  if (t.dataset?.dayF === 'venue_id' && S.modal?.type === 'form') render();
   if (t.dataset?.a === 'notif-toggle') { S.settings.notifications_enabled = t.checked; scheduleReminders(); render(); await run(sb.from('user_settings').update({ notifications_enabled: t.checked }).eq('user_id', S.me.id)); }
 });
 document.addEventListener('submit', async (ev) => {
