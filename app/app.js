@@ -529,17 +529,17 @@ function modalForm(m) {
     <label class="field"><span>${d.kind === 'scouting' ? 'Nombre del scouting' : 'Nombre del evento'}</span><input class="input" data-f="title" value="${esc(d.title)}" ${t && !d.title.trim() ? 'aria-invalid="true" style="border-color:var(--danger)"' : ''}></label>
     <label class="field"><span>Encargado</span><input class="input" data-f="responsible" value="${esc(d.responsible)}" placeholder="Persona o dependencia (ej. DFA)"></label>
     <div class="row"><label class="field"><span>Fecha</span><input class="input" type="date" data-f="date" data-check value="${d.date}"></label>
-      <label class="field"><span>Hora del evento</span><input class="input" type="time" data-f="start" data-check value="${d.start}"></label>
-      <label class="field"><span>Desmontaje / término</span><input class="input" type="time" data-f="end" data-check value="${d.end}"></label></div>
+      <label class="field"><span>Inicio (montaje)</span><input class="input" type="time" data-f="start" data-check value="${d.start}"></label>
+      <label class="field"><span>Término (desmontaje)</span><input class="input" type="time" data-f="end" data-check value="${d.end}"></label></div>
     ${timeErr ? '<p class="warn-box">La hora de término debe ser después del inicio.</p>' : ''}
-    <small class="muted">La hora de montaje anótala en las notas.</small>
+    <small class="muted">Pon como inicio la hora de montaje, así el aviso llega antes de montar. La hora del evento y los detalles van en las notas.</small>
     <label class="field"><span>Lugar</span><select class="input" data-f="venue_id" data-check ${t && d.kind === 'evento' && !d.venue_id ? 'style="border-color:var(--danger)"' : ''}><option value="">Selecciona el lugar</option>${S.venues.map((x) => `<option value="${x.id}" ${x.id === d.venue_id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></label>
     ${other ? `<label class="field"><span>¿Dónde será?</span><input class="input" data-f="venue_other" value="${esc(d.venue_other)}" placeholder="Ej. Plaza Lázaro Cárdenas, museo…" ${t && !d.venue_other.trim() ? 'style="border-color:var(--danger)"' : ''}></label>` : ''}
     ${m.conflicts?.length ? `<div class="warn-box"><b>Se empalma en este lugar con:</b><br>${m.conflicts.map((c) => `• ${esc(c.title)} (${fmtTime(c.starts_at)}–${fmtTime(c.ends_at)})`).join('<br>')}</div>` : ''}
     ${d.id ? `<label class="switch card" style="padding:12px 16px"><span><b>Cancelado</b><br><small class="muted">Sigue en el calendario, tachado, y ya no cuenta para empalmes ni material.</small></span><input type="checkbox" data-f="status" ${d.status === 'cancelado' ? 'checked' : ''}></label>` : ''}
     ${d.kind === 'scouting' ? daysEditor(d, t) : ''}
     <div><p class="section-label">Requerimientos</p><div class="req-table">${reqRows}</div></div>
-    <label class="field"><span>Notas generales</span><textarea class="input" data-f="general_notes" placeholder="Montaje, accesos, contactos, pendientes…">${esc(d.general_notes)}</textarea></label>
+    <label class="field"><span>Notas generales</span><textarea class="input" data-f="general_notes" placeholder="Hora del evento, accesos, contactos, pendientes…">${esc(d.general_notes)}</textarea></label>
     <div class="actions"><button class="btn primary" data-a="save-event" ${m.saving ? 'disabled' : ''}>${m.saving ? 'Guardando…' : 'Guardar'}</button><button class="btn outline" data-a="close">Cancelar</button></div>`];
 }
 function dayInvalid(x) {
@@ -553,8 +553,8 @@ function daysEditor(d, tried) {
       const bad = tried && dayInvalid(x); const v = venueById(x.venue_id);
       return `<div class="card day-edit" ${bad ? 'style="border-color:var(--danger)"' : ''}>
         <div class="row"><label class="field"><span>Fecha</span><input class="input" type="date" data-day-f="date" data-i="${i}" value="${x.date}"></label>
-          <label class="field"><span>Hora del evento</span><input class="input" type="time" data-day-f="start" data-i="${i}" value="${x.start}"></label>
-          <label class="field"><span>Desmontaje / término</span><input class="input" type="time" data-day-f="end" data-i="${i}" value="${x.end}"></label></div>
+          <label class="field"><span>Inicio (montaje)</span><input class="input" type="time" data-day-f="start" data-i="${i}" value="${x.start}"></label>
+          <label class="field"><span>Término (desmontaje)</span><input class="input" type="time" data-day-f="end" data-i="${i}" value="${x.end}"></label></div>
         <div class="row" style="align-items:end"><label class="field"><span>Lugar</span><select class="input" data-day-f="venue_id" data-i="${i}"><option value="">Selecciona el lugar</option>${S.venues.map((o) => `<option value="${o.id}" ${o.id === x.venue_id ? 'selected' : ''}>${esc(o.name)}</option>`).join('')}</select></label>
           ${v?.requires_detail ? `<label class="field"><span>¿Dónde será?</span><input class="input" data-day-f="venue_other" data-i="${i}" value="${esc(x.venue_other || '')}"></label>` : ''}
           <button type="button" class="btn danger small" data-a="del-day" data-i="${i}" style="flex:0 0 auto">${icon('trash')}Quitar</button></div></div>`;
