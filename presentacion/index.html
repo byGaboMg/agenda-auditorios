@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Presentación de la Agenda de Auditorios para el equipo del Departamento de Auditorios.">
+<title>Presentación Agenda de Auditorios</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: escenario 16:9 fijo y escalado (como una proyección); texto a la izquierda, equipos 3D a la derecha.
+   Un solo mundo visual oscuro, como una sala con las luces bajas: fondo ciruela casi negro y luz guinda. */
+:root {
+  --stage: #120B0E;
+  --stage-2: #1C1216;
+  --ink: #F6ECEE;
+  --ink-soft: #C9B3BA;
+  --guinda: #7E0227;
+  --guinda-glow: #B3123F;
+  --rosa: #F2A3B6;
+  --line: rgba(246, 236, 238, .14);
+  --f-display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: #070405; color: var(--ink); font-family: var(--f-body); overflow: hidden;
+  display: grid; place-items: center;
+}
+#stage {
+  position: relative; width: min(100vw, calc(100dvh * 16 / 9)); aspect-ratio: 16 / 9; max-width: 100%;
+  container-type: size; overflow: hidden;
+  background:
+    radial-gradient(60% 70% at 72% 55%, rgba(179, 18, 63, .30), transparent 70%),
+    radial-gradient(40% 50% at 10% 0%, rgba(126, 2, 39, .25), transparent 70%),
+    linear-gradient(160deg, var(--stage-2), var(--stage) 55%);
+}
+#stage::after { /* rejilla tenue, como el piso de un escenario */
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .35;
+  background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 6cqw 6cqw;
+  mask-image: linear-gradient(to top, rgba(0,0,0,.9), transparent 45%);
+}
+canvas#gl { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; }
+
+.slide {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  padding: 7cqh 0 0 5.5cqw;
+  opacity: 0; transform: translateX(-2cqw); transition: opacity .55s ease, transform .7s cubic-bezier(.2,.7,.2,1);
+}
+.slide.active { opacity: 1; transform: none; pointer-events: auto; }
+.col { width: 40cqw; display: grid; gap: 2.4cqh; }
+.eyebrow { font: 600 1.2cqw/1.2 var(--f-mono); letter-spacing: .16em; text-transform: uppercase; color: var(--rosa); }
+h1, h2 { font-family: var(--f-display); margin: 0; font-weight: 800; font-stretch: 112%; letter-spacing: -.02em; line-height: 1.02; text-wrap: balance; }
+h1 { font-size: 5.6cqw; }
+h2 { font-size: 3.9cqw; }
+h1 em, h2 em { font-style: normal; color: var(--rosa); }
+.lead { font-size: 1.7cqw; line-height: 1.5; color: var(--ink-soft); margin: 0; max-width: 38cqw; }
+ul.points { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.5cqh; }
+ul.points li { font-size: 1.6cqw; line-height: 1.42; padding-left: 2.2cqw; position: relative; }
+ul.points li::before { content: ""; position: absolute; left: 0; top: .62em; width: 1.1cqw; height: .22cqw; background: var(--guinda-glow); border-radius: 2px; }
+ul.points b { color: var(--ink); font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: .7cqw; }
+.chip { font: 500 1.2cqw/1 var(--f-body); padding: .75cqh .9cqw; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-soft); background: rgba(255,255,255,.03); }
+.chip i { display: inline-block; width: .7cqw; height: .7cqw; border-radius: 50%; margin-right: .5cqw; vertical-align: middle; }
+.logo { height: 9cqh; width: auto; }
+.note { font: 500 1cqw/1.4 var(--f-mono); color: var(--ink-soft); opacity: .8; }
+.notif-card { width: 34cqw; border-radius: 1.4cqw; box-shadow: 0 2cqh 5cqh rgba(0,0,0,.5); border: 1px solid var(--line); }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.8cqh; counter-reset: paso; }
+.steps li { counter-increment: paso; display: grid; grid-template-columns: 4.2cqw 1fr; gap: 1.2cqw; align-items: start; font-size: 1.6cqw; line-height: 1.4; }
+.steps li::before { content: counter(paso); font: 800 2.6cqw/1 var(--f-display); font-stretch: 120%; color: var(--rosa); }
+.steps b { display: block; font-weight: 600; }
+.steps span { color: var(--ink-soft); }
+.credits { font-size: 1.15cqw; color: var(--ink-soft); line-height: 1.5; }
+.credits b { color: var(--ink); }
+
+/* Arquitectura */
+.slide.arch { padding: 6cqh 3.5cqw 0 3.5cqw; }
+.arch-head { position: absolute; left: 27cqw; top: 5.5cqh; width: 68cqw; display: grid; gap: 1cqh; }
+.arch-head h2 { font-size: 3.2cqw; }
+.arch-head .lead { max-width: 66cqw; font-size: 1.3cqw; }
+.device-label { position: absolute; left: 2.6cqw; width: 20cqw; font: 600 1.05cqw/1.35 var(--f-body); color: var(--ink); }
+.device-label small { display: block; font-weight: 400; color: var(--ink-soft); font-size: .95cqw; }
+.diagram { position: absolute; left: 25cqw; top: 25cqh; width: 72cqw; height: 66cqh; }
+.diagram svg { width: 100%; height: 100%; overflow: visible; }
+.diagram text { font-family: var(--f-body); fill: var(--ink); }
+.diagram .t-title { font-family: var(--f-display); font-weight: 800; font-size: 26px; }
+.diagram .t-sub { font-size: 15px; fill: var(--ink-soft); }
+.diagram .t-tag { font-family: var(--f-mono); font-size: 13px; letter-spacing: .12em; fill: var(--rosa); }
+.diagram .flow { fill: none; stroke: rgba(242, 163, 182, .55); stroke-width: 2.4; stroke-dasharray: 7 9; animation: dash 1.6s linear infinite; }
+.diagram .flow.push { stroke: #F0C048; }
+@keyframes dash { to { stroke-dashoffset: -32; } }
+
+/* Costos */
+.cost-big { display: grid; gap: .6cqh; padding: 2.2cqh 1.6cqw; border-radius: 1.2cqw; border: 1px solid rgba(242,163,182,.35); background: linear-gradient(160deg, rgba(126,2,39,.45), rgba(126,2,39,.12)); }
+.cost-big .lbl { font: 600 1.15cqw/1.2 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--rosa); }
+.cost-big .num { font: 800 5.4cqw/1 var(--f-display); font-stretch: 112%; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.cost-big .num small { font-size: .42em; font-weight: 700; color: var(--ink-soft); margin-left: .4cqw; }
+.cost-big p { margin: 0; font-size: 1.45cqw; line-height: 1.4; color: var(--ink-soft); }
+.cost-zero { display: flex; align-items: baseline; gap: 1.2cqw; padding: 1.6cqh 1.6cqw; border-radius: 1.2cqw; border: 1px solid rgba(143,214,166,.4); background: rgba(79,163,107,.12); }
+.cost-zero .num { font: 800 3.6cqw/1 var(--f-display); color: #8FD6A6; }
+.cost-zero p { margin: 0; font-size: 1.45cqw; line-height: 1.35; }
+.cost-zero p span { display: block; color: var(--ink-soft); font-size: 1.2cqw; }
+.breakdown { position: absolute; left: 51cqw; top: 7cqh; width: 43cqw; display: grid; gap: 1.5cqh; }
+.breakdown h3 { margin: 0; font: 600 1.2cqw/1.2 var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); }
+.brow { display: grid; grid-template-columns: 1fr auto; gap: .6cqh 1cqw; align-items: baseline; }
+.brow .name { font-size: 1.55cqw; font-weight: 600; }
+.brow .amt { font: 600 1.55cqw/1 var(--f-body); font-variant-numeric: tabular-nums; }
+.brow .bar { grid-column: 1 / -1; height: 1cqh; min-height: 5px; border-radius: 9px; background: rgba(246,236,238,.08); overflow: hidden; }
+.brow .bar i { display: block; height: 100%; border-radius: 9px; background: linear-gradient(90deg, var(--guinda-glow), var(--rosa)); width: 0; transition: width 1s cubic-bezier(.2,.7,.2,1) .25s; }
+.slide.active .brow .bar i { width: var(--w); }
+.brow .hrs { grid-column: 1 / -1; font-size: 1.15cqw; color: var(--ink-soft); margin-top: -.3cqh; }
+.extras { margin: 0; padding: 1.2cqh 0 0; border-top: 1px solid var(--line); font-size: 1.2cqw; line-height: 1.5; color: var(--ink-soft); }
+.extras b { color: var(--ink); font-weight: 600; }
+/* Controles */
+.hud { position: absolute; z-index: 5; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 1.2cqw; padding: 0 2.4cqw 2.6cqh 5.5cqw; }
+.dots { display: flex; gap: .55cqw; flex: 1; flex-wrap: wrap; }
+.dots button { width: 1.6cqw; height: .5cqh; min-height: 3px; border: 0; border-radius: 9px; background: rgba(246,236,238,.18); cursor: pointer; padding: 0; transition: width .3s, background .3s; }
+.dots button.on { width: 3.8cqw; background: var(--rosa); }
+.counter { font: 600 1.05cqw/1 var(--f-mono); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.navbtn { width: 3.6cqw; height: 3.6cqw; min-width: 30px; min-height: 30px; border-radius: 50%; border: 1px solid var(--line); background: rgba(255,255,255,.05); color: var(--ink); cursor: pointer; display: grid; place-items: center; }
+.navbtn:hover { background: rgba(242, 163, 182, .16); }
+.navbtn svg { width: 45%; height: 45%; }
+.top-right { position: absolute; z-index: 5; top: 2.4cqh; right: 2.4cqw; display: flex; gap: .8cqw; }
+:focus-visible { outline: 2px solid var(--rosa); outline-offset: 3px; }
+.hint { font: 500 .95cqw/1 var(--f-mono); color: var(--ink-soft); opacity: .7; }
+.fallback { position: absolute; right: 8cqw; top: 14cqh; height: 70cqh; border-radius: 2cqw; border: .6cqw solid #2A1D22; display: none; }
+.nogl .fallback.show { display: block; }
+@media (prefers-reduced-motion: reduce) { .slide { transition: opacity .2s; transform: none; } .diagram .flow { animation: none; } }
+</style>
+
+</head>
+<body>
+<div id="stage">
+  <canvas id="gl" aria-hidden="true"></canvas>
+
+  <!-- 1 Portada -->
+  <section class="slide" id="s1" aria-label="Portada">
+    <div class="col" style="padding-top:6cqh">
+      <img class="logo" src="img/logo_oscuro.png" alt="Dirección de Difusión Cultural">
+      <p class="eyebrow">Departamento de Auditorios</p>
+      <h1>Agenda de <em>Auditorios</em></h1>
+      <p class="lead">La agenda del departamento en el teléfono y en la computadora: eventos, scouting, material y avisos para todo el equipo.</p>
+      <p class="hint">Usa ← → o los botones de abajo para avanzar</p>
+    </div>
+  </section>
+
+  <!-- 2 Para qué sirve -->
+  <section class="slide" id="s2" aria-label="Para qué sirve">
+    <div class="col">
+      <p class="eyebrow">Para qué sirve</p>
+      <h2>Una sola agenda para <em>todo el equipo</em></h2>
+      <ul class="points">
+        <li><b>Todos ven lo mismo.</b> Lo que alguien registra aparece en el teléfono de los demás.</li>
+        <li><b>Adiós a las hojas sueltas.</b> Eventos, scoutings, préstamos y notas en un mismo lugar.</li>
+        <li><b>Queda registro.</b> Cada evento guarda quién lo creó y quién lo cambió.</li>
+        <li><b>Te avisa.</b> Llega un aviso antes de cada evento y cuando el equipo hace cambios.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 3 Entrar -->
+  <section class="slide" id="s3" aria-label="Cómo entrar">
+    <div class="col">
+      <p class="eyebrow">Entrar</p>
+      <h2>Solo tu <em>nombre</em> y tu contraseña</h2>
+      <ul class="points">
+        <li>Escribes tu nombre de pila: <b>Román</b>, <b>Lalo</b>, <b>Laura</b>… sin correos.</li>
+        <li>Solo el personal del departamento tiene cuenta.</li>
+        <li>La sesión se queda abierta; no la pide cada vez.</li>
+        <li>Puedes cambiar tu contraseña en <b>Ajustes</b>.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 4 Calendario -->
+  <section class="slide" id="s4" aria-label="Calendario">
+    <div class="col">
+      <p class="eyebrow">Pantalla principal</p>
+      <h2>El calendario <em>de la semana</em></h2>
+      <ul class="points">
+        <li>Hasta arriba, lo que está <b>en curso</b> y cuánto falta para que termine.</li>
+        <li>Dos vistas: <b>lista por día</b> o <b>semana por horas</b>.</li>
+        <li>Cada lugar tiene su color y puedes filtrar por lugar.</li>
+        <li>Lo cancelado se ve tachado; lo que ya pasó, atenuado.</li>
+      </ul>
+      <div class="chips">
+        <span class="chip"><i style="background:#9C1C45"></i>Auditorio A</span><span class="chip"><i style="background:#3D5A98"></i>Auditorio B</span>
+        <span class="chip"><i style="background:#2E7D6B"></i>Vestíbulo A</span><span class="chip"><i style="background:#7A5900"></i>Vestíbulo B</span>
+        <span class="chip"><i style="background:#4F7A28"></i>Jardín del Arte</span><span class="chip"><i style="background:#C0392B"></i>Plaza Roja</span>
+        <span class="chip"><i style="background:#00838F"></i>Jardín Norte</span><span class="chip"><i style="background:#6A4C93"></i>Sala Jaime Sabines</span>
+        <span class="chip"><i style="background:#6D6D6D"></i>Otro</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 Web -->
+  <section class="slide" id="s5" aria-label="Versión web">
+    <div class="col">
+      <p class="eyebrow">También en la computadora</p>
+      <h2>La misma agenda en el <em>navegador</em></h2>
+      <p class="lead">Se abre desde cualquier computadora, sin instalar nada. Lo que cambias ahí se ve al instante en los teléfonos, y al revés.</p>
+      <p class="note">bygabomg.github.io/agenda-auditorios/app</p>
+    </div>
+  </section>
+
+  <!-- 6 Detalle -->
+  <section class="slide" id="s6" aria-label="Detalle del evento">
+    <div class="col">
+      <p class="eyebrow">Detalle del evento</p>
+      <h2>Todo lo de un evento, <em>en una pantalla</em></h2>
+      <ul class="points">
+        <li>Lugar, encargado, horario de montaje a término y a qué hora llega el recordatorio.</li>
+        <li><b>Requerimientos</b> con cantidades: Shure 58 ×2, PA ×1…</li>
+        <li>Notas con <b>enlaces que se abren</b>: carpetas de Drive o videos de YouTube.</li>
+        <li><b>Historial</b>: quién lo creó, quién lo cambió y qué cambió.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 7 Registrar -->
+  <section class="slide" id="s7" aria-label="Registrar un evento">
+    <div class="col">
+      <p class="eyebrow">Registrar</p>
+      <h2>Dar de alta un evento <em>en un minuto</em></h2>
+      <ul class="points">
+        <li>Nombre, encargado, fecha, <b>hora de montaje</b> y <b>hora de término</b>. Así el aviso llega antes del montaje.</li>
+        <li>La <b>hora del evento</b> y los detalles van en las <b>notas</b>.</li>
+        <li>Lugar de la lista, u <b>Otro</b> escribiendo dónde será.</li>
+        <li>Avisa si se <b>empalma</b> con otro evento y dice <b>cuántas piezas hay disponibles</b>.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 8 Scouting -->
+  <section class="slide" id="s8" aria-label="Scouting">
+    <div class="col">
+      <p class="eyebrow">Scouting</p>
+      <h2>De la cita <em>al evento</em></h2>
+      <ul class="points">
+        <li>El scouting es la cita donde se revisa qué va a necesitar un evento.</li>
+        <li>Puede tener <b>varios días de evento</b>, cada uno con su horario y lugar.</li>
+        <li>Esos días aparecen en el calendario como <b>“por confirmar”</b>.</li>
+        <li>Con un botón se <b>registran todos los eventos</b> de una vez, ya con requerimientos y notas.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 9 Préstamos -->
+  <section class="slide" id="s9" aria-label="Material prestado">
+    <div class="col">
+      <p class="eyebrow">Material prestado</p>
+      <h2>Saber qué salió <em>y cuándo regresa</em></h2>
+      <ul class="points">
+        <li>Quién se lo lleva, de qué escuela o área, y cuándo lo debe devolver.</li>
+        <li>Resumen arriba: <b>activos</b>, <b>vencidos</b> y <b>piezas fuera</b>.</li>
+        <li>Al regresar, <b>Marcar devuelto</b>; queda quién lo recibió.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 10 Catálogo -->
+  <section class="slide" id="s10" aria-label="Catálogo de material">
+    <div class="col">
+      <p class="eyebrow">Catálogo de material</p>
+      <h2>El inventario <em>siempre al día</em></h2>
+      <p class="lead">Cuántas piezas hay de cada cosa y cuántas están disponibles ahorita. De aquí salen los requerimientos y los préstamos.</p>
+      <div class="chips">
+        <span class="chip">Shure 58</span><span class="chip">Shure 57</span><span class="chip">Shure 57 Beta</span><span class="chip">Mic bombo</span>
+        <span class="chip">PA</span><span class="chip">Monitores</span><span class="chip">Caja directa</span><span class="chip">Cable XLR</span>
+        <span class="chip">Iluminación</span><span class="chip">Proyección</span><span class="chip">Podium</span><span class="chip">Presidium</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11 Notas -->
+  <section class="slide" id="s11" aria-label="Notas">
+    <div class="col">
+      <p class="eyebrow">Notas</p>
+      <h2>Los avisos <em>de todos los días</em></h2>
+      <ul class="points">
+        <li>“Román se llevó las llaves”, “Se dejó abierto el Auditorio B”…</li>
+        <li>Cada nota dice <b>quién la escribió</b> y cuándo.</li>
+        <li>Las importantes se <b>fijan arriba</b>; los enlaces se abren al tocarlos.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 12 Centro de notificaciones -->
+  <section class="slide" id="s12" aria-label="Notificaciones">
+    <div class="col">
+      <p class="eyebrow">Notificaciones</p>
+      <h2>Lo que pasó, <em>sin perderte nada</em></h2>
+      <ul class="points">
+        <li>Un apartado con todo lo nuevo, como en Instagram o Gmail.</li>
+        <li>Lo <b>no leído</b> se ve resaltado con un punto.</li>
+        <li>Al tocarlo te lleva al evento o a las notas y <b>se marca como visto</b>.</li>
+        <li>Lo que lees en el teléfono también aparece leído en la computadora.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 13 Avisos en el teléfono -->
+  <section class="slide" id="s13" aria-label="Avisos en el teléfono">
+    <div class="col">
+      <p class="eyebrow">Avisos en el teléfono</p>
+      <h2>Te enteras <em>al instante</em></h2>
+      <ul class="points">
+        <li>Cuando alguien <b>agrega una nota</b> o <b>crea, cambia o cancela</b> un evento.</li>
+        <li><b>Recordatorio</b> antes del montaje de cada evento: 30 min por defecto, o lo que elijas.</li>
+        <li>En Ajustes decides qué tipo de aviso suena.</li>
+      </ul>
+      <img class="notif-card" src="img/15_notificacion.webp" alt="Ejemplo de aviso en la barra de notificaciones de Android">
+    </div>
+  </section>
+
+  <!-- 14 Menú y tema -->
+  <section class="slide" id="s14" aria-label="Menú y tema">
+    <div class="col">
+      <p class="eyebrow">Menú y ajustes</p>
+      <h2>Todo a un toque, <em>claro u oscuro</em></h2>
+      <ul class="points">
+        <li>El menú lateral lleva a Calendario, Notificaciones, Scouting, Material, Catálogo y Notas.</li>
+        <li>Cada quien elige su tema: sistema, claro u oscuro.</li>
+        <li>En modo oscuro el logo de la Dirección cambia a letras claras.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 15 Seguridad -->
+  <section class="slide" id="s15" aria-label="Seguridad e historial">
+    <div class="col">
+      <p class="eyebrow">Confianza</p>
+      <h2>Nada se pierde, <em>todo queda registrado</em></h2>
+      <ul class="points">
+        <li>Solo entra el personal del departamento, cada quien con su contraseña.</li>
+        <li><b>Eliminar no borra</b>: el evento se oculta y se puede deshacer.</li>
+        <li>Cancelar deja el evento visible, tachado, y libera el lugar y el material.</li>
+        <li>Cada cambio queda con <b>nombre, fecha y hora</b>.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 16 Arquitectura -->
+  <section class="slide arch" id="s16" aria-label="Cómo funciona por dentro">
+    <div class="arch-head">
+      <p class="eyebrow">Cómo funciona por dentro</p>
+      <h2>Dónde vive cada <em>pieza</em></h2>
+      <p class="lead">El teléfono y la computadora no guardan la agenda: la consultan en una base de datos en internet. Por eso todos ven lo mismo.</p>
+    </div>
+    <div class="device-label" style="top:12cqh">Teléfonos Android<small>La app que se instala desde Drive</small></div>
+    <div class="device-label" style="bottom:10cqh">Computadoras<small>La página web, en cualquier navegador</small></div>
+    <div class="diagram">
+      <svg viewBox="0 0 1000 560" role="img" aria-label="Diagrama: los teléfonos y computadoras se conectan a Supabase; Supabase envía los avisos por Firebase; la página web está en GitHub Pages y la app se descarga de Google Drive">
+        <defs>
+          <linearGradient id="gSupa" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a0c1c"/><stop offset="1" stop-color="#22101a"/></linearGradient>
+          <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#F2A3B6"/></marker>
+          <marker id="arrowY" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#F0C048"/></marker>
+        </defs>
+        <!-- conexiones desde los equipos (izquierda) -->
+        <path class="flow" d="M -40 95 C 110 95, 150 200, 268 215" marker-end="url(#arrow)"/>
+        <path class="flow" d="M -40 455 C 110 455, 150 330, 268 315" marker-end="url(#arrow)"/>
+        <!-- Supabase -->
+        <rect x="270" y="110" width="410" height="320" rx="22" fill="url(#gSupa)" stroke="#B3123F" stroke-width="2"/>
+        <text class="t-tag" x="296" y="148">EN LA NUBE</text>
+        <text class="t-title" x="296" y="184">Supabase</text>
+        <text class="t-sub" x="296" y="212">La base de datos del equipo</text>
+        <g class="t-sub">
+          <text x="296" y="260">• Guarda eventos, scouting, préstamos y notas</text>
+          <text x="296" y="292">• Revisa quién puede entrar y qué puede ver</text>
+          <text x="296" y="324">• Lleva el historial de cada cambio</text>
+          <text x="296" y="356">• Crea las notificaciones y los recordatorios</text>
+          <text x="296" y="388">• Borra las notificaciones de más de 60 días</text>
+        </g>
+        <!-- Firebase -->
+        <path class="flow push" d="M 680 230 C 715 230, 700 115, 728 112" marker-end="url(#arrowY)"/>
+        <rect x="730" y="50" width="270" height="130" rx="18" fill="#2a2010" stroke="#F0C048" stroke-width="1.6"/>
+        <text class="t-tag" x="752" y="84" style="fill:#F0C048">AVISOS AL INSTANTE</text>
+        <text class="t-title" x="752" y="116" style="font-size:22px">Firebase</text>
+        <text class="t-sub" x="752" y="142">Servicio de Google que hace</text>
+        <text class="t-sub" x="752" y="162">sonar el teléfono</text>
+        <path class="flow push" d="M 865 50 C 865 -20, 200 -30, -40 60" marker-end="url(#arrowY)"/>
+        <!-- GitHub Pages -->
+        <rect x="730" y="225" width="270" height="110" rx="18" fill="#161c2a" stroke="#6E8BC8" stroke-width="1.4"/>
+        <text class="t-tag" x="752" y="257" style="fill:#9FB4E8">LA PÁGINA WEB</text>
+        <text class="t-title" x="752" y="287" style="font-size:22px">GitHub Pages</text>
+        <text class="t-sub" x="752" y="313">Donde está publicada la página</text>
+        <path class="flow" d="M 730 300 C 560 520, 200 520, -40 470" style="stroke:rgba(159,180,232,.5)"/>
+        <!-- Drive -->
+        <rect x="730" y="380" width="270" height="110" rx="18" fill="#12221a" stroke="#4FA36B" stroke-width="1.4"/>
+        <text class="t-tag" x="752" y="412" style="fill:#8FD6A6">LA APP</text>
+        <text class="t-title" x="752" y="442" style="font-size:22px">Google Drive</text>
+        <text class="t-sub" x="752" y="468">De ahí se descarga el APK</text>
+        <path class="flow" d="M 730 460 C 540 560, 100 300, -40 130" style="stroke:rgba(143,214,166,.45)"/>
+      </svg>
+    </div>
+  </section>
+
+  <!-- 17 Costos -->
+  <section class="slide" id="s17" aria-label="Cuánto costaría">
+    <div class="col">
+      <p class="eyebrow">Cuánto costaría</p>
+      <h2>Lo que vale <em>este sistema</em></h2>
+      <div class="cost-big">
+        <span class="lbl">Si se mandara a hacer</span>
+        <span class="num">$232,500<small>MXN</small></span>
+        <p>Unas 420 horas de trabajo a $550 la hora, precio de un desarrollador independiente. Con una agencia suele costar más.</p>
+      </div>
+      <div class="cost-zero">
+        <span class="num">$0</span>
+        <p>al mes para mantenerlo funcionando<span>Usa los planes gratuitos de Supabase, Firebase, GitHub y Drive.</span></p>
+      </div>
+    </div>
+    <div class="breakdown">
+      <h3>En qué se va el trabajo</h3>
+      <div class="brow"><span class="name">Aplicación Android</span><span class="amt">$93,500</span><span class="bar"><i style="--w:100%"></i></span><span class="hrs">170 horas · Calendario, formularios, avisos y modo oscuro</span></div>
+      <div class="brow"><span class="name">Página web</span><span class="amt">$60,500</span><span class="bar"><i style="--w:65%"></i></span><span class="hrs">110 horas · Las mismas funciones desde cualquier computadora</span></div>
+      <div class="brow"><span class="name">Base de datos y seguridad</span><span class="amt">$24,750</span><span class="bar"><i style="--w:26%"></i></span><span class="hrs">45 horas · Quién entra, qué ve, historial de cambios</span></div>
+      <div class="brow"><span class="name">Avisos al instante</span><span class="amt">$24,750</span><span class="bar"><i style="--w:26%"></i></span><span class="hrs">45 horas · Notificaciones al teléfono y recordatorios</span></div>
+      <div class="brow"><span class="name">Diseño, pruebas y puesta en marcha</span><span class="amt">$27,500</span><span class="bar"><i style="--w:29%"></i></span><span class="hrs">50 horas · Pantallas, logos, pruebas con datos reales</span></div>
+      <div class="brow"><span class="name">Manuales y presentación</span><span class="amt">$1,500</span><span class="bar"><i style="--w:3%"></i></span><span class="hrs">Precio fijo · Documento informativo y esta presentación</span></div>
+      <p class="extras"><b>Opcional más adelante:</b> respaldos diarios automáticos con el plan de pago de Supabase (unos $25 USD al mes) y publicar la app en Google Play (pago único de $25 USD).</p>
+    </div>
+  </section>
+
+  <!-- 18 Cómo empezar -->
+  <section class="slide" id="s18" aria-label="Cómo empezar">
+    <div class="col">
+      <p class="eyebrow">Para empezar hoy</p>
+      <h2>Cuatro pasos <em>y listo</em></h2>
+      <ol class="steps">
+        <li><div><b>Instala la app</b><span>Abre desde tu teléfono el enlace de Drive y descarga el APK.</span></div></li>
+        <li><div><b>Entra con tu nombre</b><span>Y la contraseña que te dieron. Luego puedes cambiarla.</span></div></li>
+        <li><div><b>Permite las notificaciones</b><span>La app lo pide la primera vez que la abres.</span></div></li>
+        <li><div><b>Quita la restricción de batería</b><span>En Ajustes → Avisos del equipo, para que los avisos no se retrasen.</span></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- 19 Cierre -->
+  <section class="slide" id="s19" aria-label="Preguntas">
+    <div class="col" style="padding-top:8cqh">
+      <img class="logo" src="img/logo_oscuro.png" alt="Dirección de Difusión Cultural">
+      <h1>¿<em>Preguntas</em>?</h1>
+      <p class="lead">La agenda ya está funcionando. Lo que vean que falta o que se puede mejorar, díganlo: se ajusta.</p>
+      <p class="credits">Desarrollado por <b>Luis Gabriel Manzano Guadarrama</b><br>Soporte y cotizaciones: manzano.guadarrama.luisgabriel@gmail.com</p>
+    </div>
+  </section>
+
+  <img class="fallback" id="fallback" alt="">
+
+  <div class="top-right">
+    <button class="navbtn" id="fs" aria-label="Pantalla completa" title="Pantalla completa (F)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+  </div>
+  <div class="hud">
+    <div class="dots" id="dots" role="tablist" aria-label="Diapositivas"></div>
+    <span class="counter" id="counter">1 / 19</span>
+    <button class="navbtn" id="prev" aria-label="Diapositiva anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+    <button class="navbtn" id="next" aria-label="Siguiente diapositiva"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  const slides = [...document.querySelectorAll('.slide')];
+  const N = slides.length;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---------------------------------------------------------------- Poses por diapositiva
+  // Cada equipo: [x, y, z], [rotX, rotY, rotZ], escala, pantalla. null = fuera de escena.
+  const OFF = { p: [2.4, -5.2, 0], r: [0.4, -0.6, 0], s: 0.7 };
+  const P = (p, r, s, tex) => ({ p, r, s, tex });
+  const SCENES = [
+    /* 1 portada   */ { laptop: P([2.0, -0.95, -0.6], [0.32, -0.42, 0], 1.62, 'web_calendario'), a: P([3.15, -0.35, 1.0], [0.06, -0.38, 0.05], 1.4, '02_calendario'), b: null },
+    /* 2 para qué  */ { laptop: P([2.8, -0.85, -1.5], [0.28, -0.5, 0], 1.3, 'web_semana'), a: P([1.25, -0.2, 0.8], [0.05, -0.18, 0.03], 1.8, '02_calendario'), b: null },
+    /* 3 entrar    */ { laptop: null, a: P([2.3, -0.02, 0.6], [0.04, -0.3, 0.02], 1.95, '01_login'), b: null },
+    /* 4 calendario*/ { laptop: null, a: P([1.35, -0.06, 0.6], [0.04, -0.2, 0.04], 1.85, '02_calendario'), b: P([3.2, 0.04, -0.35], [0.04, -0.45, -0.03], 1.85, '03_semana') },
+    /* 5 web       */ { laptop: P([2.0, -1.1, 0.1], [0.3, -0.3, 0], 1.72, 'web_semana'), a: null, b: null },
+    /* 6 detalle   */ { laptop: P([2.5, -0.85, -1.5], [0.28, -0.45, 0], 1.34, 'web_detalle'), a: P([0.95, -0.25, 1.0], [0.05, -0.15, 0.04], 1.6, '04_detalle'), b: null },
+    /* 7 registrar */ { laptop: null, a: P([1.35, -0.06, 0.6], [0.04, -0.22, 0.04], 1.85, '06_formulario'), b: P([3.2, 0.04, -0.35], [0.04, -0.45, -0.03], 1.85, '07_requerimientos') },
+    /* 8 scouting  */ { laptop: P([2.5, -0.85, -1.5], [0.28, -0.45, 0], 1.34, 'web_scouting'), a: P([0.95, -0.25, 1.0], [0.05, -0.15, 0.04], 1.6, '09_scouting'), b: null },
+    /* 9 préstamos */ { laptop: null, a: P([2.3, -0.02, 0.6], [0.05, -0.36, 0.03], 1.95, '10_prestamos'), b: null },
+    /* 10 catálogo */ { laptop: null, a: P([2.3, -0.02, 0.6], [0.05, -0.28, -0.02], 1.95, '11_catalogo'), b: null },
+    /* 11 notas    */ { laptop: null, a: P([2.3, -0.02, 0.6], [0.05, -0.34, 0.03], 1.95, '12_notas'), b: null },
+    /* 12 notif.   */ { laptop: P([2.5, -0.85, -1.5], [0.28, -0.45, 0], 1.34, 'web_notificaciones'), a: P([0.95, -0.25, 1.0], [0.05, -0.15, 0.04], 1.6, 'web_notificaciones_movil'), b: null },
+    /* 13 avisos   */ { laptop: null, a: P([2.55, -0.02, 0.6], [0.05, -0.32, 0.03], 1.95, '14_ajustes_notif'), b: null },
+    /* 14 tema     */ { laptop: null, a: P([1.35, -0.06, 0.6], [0.04, -0.2, 0.04], 1.85, '08_menu'), b: P([3.2, 0.04, -0.35], [0.04, -0.45, -0.03], 1.85, '20_menu_oscuro') },
+    /* 15 confianza*/ { laptop: null, a: P([1.35, -0.06, 0.6], [0.04, -0.2, 0.04], 1.85, '04_detalle'), b: P([3.2, 0.04, -0.35], [0.04, -0.45, -0.03], 1.85, '19_detalle_oscuro') },
+    /* 16 arquitect*/ { laptop: P([-2.95, -1.3, 0.2], [0.34, 0.32, 0], 0.58, 'web_calendario'), a: P([-3.05, 0.42, 0.3], [0.05, 0.3, -0.03], 0.8, '02_calendario'), b: null },
+    /* 17 costos   */ { laptop: null, a: null, b: null },
+    /* 18 empezar  */ { laptop: null, a: P([2.3, -0.02, 0.6], [0.04, -0.3, 0.02], 1.95, '01_login'), b: null },
+    /* 19 cierre   */ { laptop: P([2.55, -1.15, -1.7], [0.3, -0.38, 0], 1.3, 'web_notificaciones'), a: P([1.3, -0.08, 0.6], [0.05, -0.12, 0.08], 1.6, '17_calendario_oscuro'), b: P([3.3, 0.06, -0.2], [0.05, -0.55, -0.06], 1.6, '13_ajustes') },
+  ];
+
+  // ---------------------------------------------------------------- Navegación
+  const dots = document.getElementById('dots');
+  slides.forEach((s, i) => {
+    const b = document.createElement('button');
+    b.setAttribute('role', 'tab'); b.setAttribute('aria-label', `Ir a ${s.getAttribute('aria-label')}`);
+    b.addEventListener('click', () => go(i)); dots.appendChild(b);
+  });
+  let cur = -1;
+  function go(i) {
+    i = Math.max(0, Math.min(N - 1, i)); if (i === cur) return;
+    cur = i;
+    slides.forEach((s, k) => s.classList.toggle('active', k === i));
+    [...dots.children].forEach((d, k) => { d.classList.toggle('on', k === i); d.setAttribute('aria-selected', k === i); });
+    document.getElementById('counter').textContent = `${i + 1} / ${N}`;
+    try { history.replaceState(null, '', `#diapositiva-${i + 1}`); } catch (e) { /* sin historial */ }
+    if (gl) applyScene(i); else showFallback(i);
+  }
+  document.getElementById('next').onclick = () => go(cur + 1);
+  document.getElementById('prev').onclick = () => go(cur - 1);
+  document.getElementById('fs').onclick = toggleFs;
+  function toggleFs() {
+    const el = document.documentElement;
+    if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+    else el.requestFullscreen?.().catch(() => {});
+  }
+  addEventListener('keydown', (e) => {
+    if (['ArrowRight', 'PageDown', ' ', 'Enter'].includes(e.key)) { e.preventDefault(); go(cur + 1); }
+    else if (['ArrowLeft', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); go(cur - 1); }
+    else if (e.key === 'Home') go(0); else if (e.key === 'End') go(N - 1);
+    else if (e.key.toLowerCase() === 'f') toggleFs();
+  });
+  let tx = null;
+  addEventListener('touchstart', (e) => { tx = e.touches[0].clientX; }, { passive: true });
+  addEventListener('touchend', (e) => { if (tx == null) return; const dx = e.changedTouches[0].clientX - tx; if (Math.abs(dx) > 50) go(cur + (dx < 0 ? 1 : -1)); tx = null; });
+
+  function showFallback(i) {
+    const f = document.getElementById('fallback'); const sc = SCENES[i]; const t = (sc.a || sc.laptop || {}).tex;
+    if (t && i !== 15) { f.src = `img/${t}.webp`; f.classList.add('show'); } else f.classList.remove('show');
+  }
+
+  // ---------------------------------------------------------------- 3D
+  const canvas = document.getElementById('gl');
+  let gl = null;
+  try { if (window.THREE && (canvas.getContext('webgl2') || canvas.getContext('webgl'))) gl = true; } catch (e) { gl = null; }
+  if (!gl) { document.getElementById('stage').classList.add('nogl'); const h = parseInt((location.hash.match(/\d+/) || [1])[0], 10); go(h - 1); return; }
+
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(30, 16 / 9, 0.1, 100);
+  camera.position.set(0, 0.25, 9);
+  camera.lookAt(0, 0, 0);
+
+  scene.add(new THREE.HemisphereLight(0xffe3ea, 0x120b0e, 0.75));
+  const key = new THREE.DirectionalLight(0xffffff, 1.05); key.position.set(-3, 4, 6); scene.add(key);
+  const rim = new THREE.PointLight(0xc2185b, 1.1, 18); rim.position.set(4, 3, -4); scene.add(rim);
+  const fill = new THREE.PointLight(0xf2a3b6, 0.35, 14); fill.position.set(2, -2, 5); scene.add(fill);
+
+  function roundedRect(w, h, r) {
+    const s = new THREE.Shape(); const x = -w / 2, y = -h / 2;
+    s.moveTo(x + r, y); s.lineTo(x + w - r, y); s.quadraticCurveTo(x + w, y, x + w, y + r);
+    s.lineTo(x + w, y + h - r); s.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    s.lineTo(x + r, y + h); s.quadraticCurveTo(x, y + h, x, y + h - r);
+    s.lineTo(x, y + r); s.quadraticCurveTo(x, y, x + r, y);
+    return s;
+  }
+  function screenGeo(w, h, r) {
+    const g = new THREE.ShapeGeometry(roundedRect(w, h, r), 12);
+    const pos = g.attributes.position, uv = g.attributes.uv;
+    for (let i = 0; i < pos.count; i++) uv.setXY(i, (pos.getX(i) + w / 2) / w, (pos.getY(i) + h / 2) / h);
+    uv.needsUpdate = true; return g;
+  }
+  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x2a1c22, metalness: 0.65, roughness: 0.32 });
+  const darkMat = new THREE.MeshStandardMaterial({ color: 0x140d10, metalness: 0.3, roughness: 0.6 });
+
+  // Texturas
+  const loader = new THREE.TextureLoader();
+  const texCache = {};
+  function tex(name) {
+    if (!texCache[name]) {
+      const t = loader.load(`img/${name}.webp`);
+      t.encoding = THREE.sRGBEncoding; t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      texCache[name] = t;
+    }
+    return texCache[name];
+  }
+  SCENES.forEach((s) => ['laptop', 'a', 'b'].forEach((k) => s[k] && tex(s[k].tex)));
+
+  // Sombra suave (textura radial dibujada en canvas)
+  const sc = document.createElement('canvas'); sc.width = sc.height = 128;
+  const sx = sc.getContext('2d'); const grd = sx.createRadialGradient(64, 64, 4, 64, 64, 64);
+  grd.addColorStop(0, 'rgba(0,0,0,0.55)'); grd.addColorStop(1, 'rgba(0,0,0,0)'); sx.fillStyle = grd; sx.fillRect(0, 0, 128, 128);
+  const shadowTex = new THREE.CanvasTexture(sc);
+
+  function makePhone() {
+    const g = new THREE.Group();
+    const w = 0.82, h = 1.74, d = 0.06, bev = 0.02;
+    const body = new THREE.Mesh(new THREE.ExtrudeGeometry(roundedRect(w, h, 0.12), { depth: d, bevelEnabled: true, bevelThickness: bev, bevelSize: bev, bevelSegments: 4, curveSegments: 16 }), bodyMat);
+    body.geometry.translate(0, 0, -d / 2); g.add(body);
+    const glass = new THREE.Mesh(screenGeo(w - 0.02, h - 0.02, 0.11), darkMat); glass.position.z = d / 2 + bev + 0.001; g.add(glass);
+    const sw = 0.755, sh = sw / 0.45;
+    const screenMat = new THREE.MeshBasicMaterial({ toneMapped: false });
+    const screen = new THREE.Mesh(screenGeo(sw, sh, 0.085), screenMat); screen.position.z = d / 2 + bev + 0.003; g.add(screen);
+    const cam = new THREE.Mesh(new THREE.CircleGeometry(0.018, 20), new THREE.MeshBasicMaterial({ color: 0x050304 })); cam.position.set(0, sh / 2 - 0.035, d / 2 + bev + 0.004); g.add(cam);
+    const sh2 = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.7), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }));
+    sh2.rotation.x = -Math.PI / 2; sh2.position.set(0, -h / 2 - 0.12, 0); g.add(sh2);
+    return { group: g, screenMat, kind: 'phone' };
+  }
+  function makeLaptop() {
+    const g = new THREE.Group();
+    const bw = 2.7, bd = 1.8, bt = 0.05;
+    const base = new THREE.Mesh(new THREE.ExtrudeGeometry(roundedRect(bw, bd, 0.09), { depth: bt, bevelEnabled: true, bevelThickness: 0.01, bevelSize: 0.01, bevelSegments: 2, curveSegments: 10 }), bodyMat);
+    base.geometry.rotateX(-Math.PI / 2); base.geometry.translate(0, -bt, 0); g.add(base);
+    const deck = new THREE.Mesh(screenGeo(bw - 0.22, 1.0, 0.04), darkMat); deck.rotation.x = -Math.PI / 2; deck.position.set(0, 0.012, -0.22); g.add(deck);
+    const pad = new THREE.Mesh(screenGeo(0.8, 0.46, 0.04), new THREE.MeshStandardMaterial({ color: 0x24171c, metalness: .5, roughness: .4 }));
+    pad.rotation.x = -Math.PI / 2; pad.position.set(0, 0.012, 0.56); g.add(pad);
+    const lid = new THREE.Group(); lid.position.set(0, 0.005, -bd / 2 + 0.02); g.add(lid);
+    const lw = 2.7, lh = 1.74;
+    const lidBody = new THREE.Mesh(new THREE.ExtrudeGeometry(roundedRect(lw, lh, 0.09), { depth: 0.035, bevelEnabled: true, bevelThickness: 0.008, bevelSize: 0.008, bevelSegments: 2, curveSegments: 10 }), bodyMat);
+    lidBody.geometry.translate(0, lh / 2, -0.035); lid.add(lidBody);
+    const bezel = new THREE.Mesh(screenGeo(lw - 0.03, lh - 0.03, 0.08), darkMat); bezel.position.set(0, lh / 2, 0.009); lid.add(bezel);
+    const sw = 2.54, sh = sw / 1.6;
+    const screenMat = new THREE.MeshBasicMaterial({ toneMapped: false });
+    const screen = new THREE.Mesh(screenGeo(sw, sh, 0.02), screenMat); screen.position.set(0, lh / 2 + 0.02, 0.011); lid.add(screen);
+    const shadow = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 3), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }));
+    shadow.rotation.x = -Math.PI / 2; shadow.position.set(0, -bt - 0.02, 0); g.add(shadow);
+    return { group: g, screenMat, lid, kind: 'laptop' };
+  }
+
+  const devices = { laptop: makeLaptop(), a: makePhone(), b: makePhone() };
+  const OPEN = -0.2, CLOSED = 1.2;
+  Object.entries(devices).forEach(([k, d], i) => {
+    scene.add(d.group); d.phase = i * 1.7;
+    d.from = d.to = { ...OFF, tex: null }; d.cur = { p: OFF.p.slice(), r: OFF.r.slice(), s: OFF.s }; d.t = 1; d.spin = 0; d.texName = null;
+    d.group.position.set(...OFF.p); d.group.scale.setScalar(OFF.s);
+    if (d.lid) d.lid.rotation.x = OPEN;
+  });
+
+  const DUR = reduce ? 1 : 1150;
+  function applyScene(i) {
+    const s = SCENES[i];
+    for (const k of ['laptop', 'a', 'b']) {
+      const d = devices[k]; const target = s[k] || { ...OFF, tex: d.texName };
+      d.from = { p: d.cur.p.slice(), r: d.cur.r.slice(), s: d.cur.s };
+      d.to = target; d.t0 = performance.now(); d.t = 0;
+      d.newTex = target.tex && target.tex !== d.texName ? target.tex : null;
+      d.swapped = false;
+      // Si ya estaba visible y cambia de pantalla: gira (teléfono) o cierra y abre la tapa (laptop).
+      d.flip = !!(d.newTex && d.texName && s[k] && d.cur.p[1] > -4);
+      if (d.newTex && !d.flip) { d.screenMat.map = tex(d.newTex); d.screenMat.needsUpdate = true; d.texName = d.newTex; d.newTex = null; }
+    }
+  }
+  const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  const lerp = (a, b, t) => a + (b - a) * t;
+
+  let mx = 0, my = 0;
+  addEventListener('pointermove', (e) => { mx = (e.clientX / innerWidth - 0.5); my = (e.clientY / innerHeight - 0.5); });
+
+  function resize() {
+    const r = canvas.getBoundingClientRect();
+    renderer.setSize(Math.max(1, r.width), Math.max(1, r.height), false);
+  }
+  addEventListener('resize', resize); resize();
+
+  function frame(now) {
+    const time = now / 1000;
+    for (const d of Object.values(devices)) {
+      let t = d.t0 ? Math.min(1, (now - d.t0) / DUR) : 1; const e = ease(t);
+      for (let j = 0; j < 3; j++) { d.cur.p[j] = lerp(d.from.p[j], d.to.p[j], e); d.cur.r[j] = lerp(d.from.r[j], d.to.r[j], e); }
+      d.cur.s = lerp(d.from.s, d.to.s, e);
+      let extraY = 0, lidAngle = OPEN, arc = Math.sin(Math.PI * e) * 0.18;
+      if (d.flip) {
+        if (d.kind === 'phone') extraY = Math.PI * 2 * e;
+        else lidAngle = lerp(OPEN, CLOSED, Math.sin(Math.PI * e));
+        if (!d.swapped && e >= 0.5) { d.screenMat.map = tex(d.newTex); d.screenMat.needsUpdate = true; d.texName = d.newTex; d.swapped = true; }
+      }
+      const bob = reduce ? 0 : Math.sin(time * 0.9 + d.phase) * 0.035;
+      const sway = reduce ? 0 : Math.sin(time * 0.6 + d.phase) * 0.035;
+      d.group.position.set(d.cur.p[0], d.cur.p[1] + bob + (d.flip ? arc : 0), d.cur.p[2]);
+      d.group.rotation.set(d.cur.r[0], d.cur.r[1] + sway + extraY, d.cur.r[2]);
+      d.group.scale.setScalar(Math.max(0.0001, d.cur.s));
+      if (d.lid) d.lid.rotation.x = lidAngle;
+      d.t = t;
+    }
+    camera.position.x = lerp(camera.position.x, mx * 0.35, 0.05);
+    camera.position.y = lerp(camera.position.y, 0.25 - my * 0.25, 0.05);
+    camera.lookAt(0, 0, 0);
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  }
+  const start = parseInt((location.hash.match(/\d+/) || [1])[0], 10) - 1;
+  go(isNaN(start) ? 0 : start);
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
