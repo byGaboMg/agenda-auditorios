@@ -95,6 +95,14 @@ ul.points b { color: var(--ink); font-weight: 600; }
 .diagram .flow.push { stroke: #F0C048; }
 @keyframes dash { to { stroke-dashoffset: -32; } }
 
+/* Diapositiva 0: logo */
+.slide.intro { padding: 0; display: grid; place-content: center; justify-items: center; gap: 5cqh; text-align: center; }
+.intro .logo { height: 24cqh; opacity: 0; transform: scale(.94); transition: opacity 1.1s ease .15s, transform 1.4s cubic-bezier(.2,.7,.2,1) .15s; }
+.intro .eyebrow { font-size: 2.1cqw; letter-spacing: .28em; opacity: 0; transition: opacity 1s ease .8s; }
+.intro .hint { position: absolute; left: 0; right: 0; bottom: 11cqh; opacity: 0; transition: opacity 1s ease 1.6s; }
+.slide.intro.active .logo { opacity: 1; transform: none; }
+.slide.intro.active .eyebrow, .slide.intro.active .hint { opacity: 1; }
+.slide.intro.active ~ .hud .dots, .slide.intro.active ~ .hud .counter { visibility: hidden; }
 /* Costos */
 .cost-big { display: grid; gap: .6cqh; padding: 2.2cqh 1.6cqw; border-radius: 1.2cqw; border: 1px solid rgba(242,163,182,.35); background: linear-gradient(160deg, rgba(126,2,39,.45), rgba(126,2,39,.12)); }
 .cost-big .lbl { font: 600 1.15cqw/1.2 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--rosa); }
@@ -138,6 +146,13 @@ ul.points b { color: var(--ink); font-weight: 600; }
 <div id="stage">
   <canvas id="gl" aria-hidden="true"></canvas>
 
+  <!-- 0 Logo -->
+  <section class="slide intro" id="s0" aria-label="Inicio">
+    <img class="logo" src="img/logo_oscuro.png" alt="Dirección de Difusión Cultural">
+    <p class="eyebrow">Departamento de Auditorios</p>
+    <p class="hint">Presiona → para comenzar</p>
+  </section>
+
   <!-- 1 Portada -->
   <section class="slide" id="s1" aria-label="Portada">
     <div class="col" style="padding-top:6cqh">
@@ -145,7 +160,6 @@ ul.points b { color: var(--ink); font-weight: 600; }
       <p class="eyebrow">Departamento de Auditorios</p>
       <h1>Agenda de <em>Auditorios</em></h1>
       <p class="lead">La agenda del departamento en el teléfono y en la computadora: eventos, scouting, material y avisos para todo el equipo.</p>
-      <p class="hint">Usa ← → o los botones de abajo para avanzar</p>
     </div>
   </section>
 
@@ -458,7 +472,7 @@ ul.points b { color: var(--ink); font-weight: 600; }
   </div>
   <div class="hud">
     <div class="dots" id="dots" role="tablist" aria-label="Diapositivas"></div>
-    <span class="counter" id="counter">1 / 19</span>
+    <span class="counter" id="counter">1 / 20</span>
     <button class="navbtn" id="prev" aria-label="Diapositiva anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
     <button class="navbtn" id="next" aria-label="Siguiente diapositiva"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   </div>
@@ -476,6 +490,7 @@ ul.points b { color: var(--ink); font-weight: 600; }
   const OFF = { p: [2.4, -5.2, 0], r: [0.4, -0.6, 0], s: 0.7 };
   const P = (p, r, s, tex) => ({ p, r, s, tex });
   const SCENES = [
+    /* 0 logo      */ { laptop: null, a: null, b: null },
     /* 1 portada   */ { laptop: P([2.0, -0.95, -0.6], [0.32, -0.42, 0], 1.62, 'web_calendario'), a: P([3.15, -0.35, 1.0], [0.06, -0.38, 0.05], 1.4, '02_calendario'), b: null },
     /* 2 para qué  */ { laptop: P([2.8, -0.85, -1.5], [0.28, -0.5, 0], 1.3, 'web_semana'), a: P([1.25, -0.2, 0.8], [0.05, -0.18, 0.03], 1.8, '02_calendario'), b: null },
     /* 3 entrar    */ { laptop: null, a: P([2.3, -0.02, 0.6], [0.04, -0.3, 0.02], 1.95, '01_login'), b: null },
@@ -534,7 +549,7 @@ ul.points b { color: var(--ink); font-weight: 600; }
 
   function showFallback(i) {
     const f = document.getElementById('fallback'); const sc = SCENES[i]; const t = (sc.a || sc.laptop || {}).tex;
-    if (t && i !== 15) { f.src = `img/${t}.webp`; f.classList.add('show'); } else f.classList.remove('show');
+    if (t && i !== 16) { f.src = `img/${t}.webp`; f.classList.add('show'); } else f.classList.remove('show');
   }
 
   // ---------------------------------------------------------------- 3D
